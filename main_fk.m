@@ -27,7 +27,8 @@ alpha = [0, -pi/2, 0, 0, -pi/2, -pi/2];
 
 %q = [pi/3, -2*pi/6, pi/6, 5*pi/6, pi+pi/6, -pi/6]; %sinistra, up, no flip
 %q = [0,0,0,0,0,0];
-q = [pi/4, pi/6, -pi/4, pi/3, -pi/6, pi/2];
+% q = [pi/4, pi/6, -pi/4, pi/3, -pi/6, pi/2];
+q= [pi/3, -2*pi/6, pi/6, 5*pi/6, pi+pi/6, -pi/6];
 T06 = forward_kinematics(q, d, a, alpha);
 
 disp('The pose of the end effector is:');
