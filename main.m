@@ -3,6 +3,8 @@ clc
 clear all
 close all
 
+addpath('../Orbbec/KinZ-Matlab-master/Mex/');
+
 % The robot considered is a TM5-700 Techman cobot with 6dof non redundand
 % with the following parameters in mm:
 a3 = 329;
@@ -20,14 +22,6 @@ d3 = -129.70;
 d = [d1, d2, d3, d4, d5, d6];
 a = [0, 0, a3, a4, 0, 0];  
 alpha = [0, -pi/2, 0, 0, -pi/2, -pi/2]; 
-
-% The human arm considered has the following parameters:
-
-%disposizione del braccio dalla parte opposta del robot
-u_d = [100, 0, 0, 0];
-u_a = [100, 200, 100, 100];
-u_alpha = [0, -pi/2, 0, 0];
-u_q = [pi/2, 0, 0, 0];
 
 
 %% Collision avoidance algorithm
@@ -61,7 +55,7 @@ robot = struct();
 robot.hAx = ax;
 robot.model = data.model;
 robot.type = data.type;
-robot.n = length(data.dati.jHome); % gradi di libert�
+robot.n = length(data.dati.jHome); % gradi di libertà
 robot.dati = data.dati; % dati modello cinematico
 robot.datadir = pwd;
 robot.SSV = [];
@@ -78,7 +72,6 @@ end
 
 Links = [d1, d2, d3, d4, d5, d6];
 
-u_links = [100, 200, 200, 100];
 
 % Create transform hierarchy
 robot.ha = hgtransform('Parent', ax);
@@ -90,21 +83,6 @@ for i = 2:robot.n
     robot.hLink(i) = hgtransform('Parent', robot.hLink(i-1));
 end
 
-% Create the human arm structure
-human_arm = struct();
-human_arm.hAx = ax;
-human_arm.n = 4; % gradi di libertà
-human_arm.SSV = [];
-
-% Create transform hierarchy
-human_arm.ha = hgtransform('Parent', ax);
-human_arm.h0 = hgtransform('Parent', human_arm.ha);
-human_arm.hLink = gobjects(1, human_arm.n+2);
-human_arm.hLink(1) = hgtransform('Parent', human_arm.h0);
-
-for i = 2:human_arm.n
-    human_arm.hLink(i) = hgtransform('Parent', human_arm.hLink(i-1));
-end
 
 n = 50;
  % Matrici di trasformazione:
@@ -133,43 +111,32 @@ n = 50;
     
     set(robot.hLink(6), 'Matrix', A56);
 
+% Takes info from the camera
+kz = KinZ('720p', 'binned', 'nfov');
 
-    % stessa cosa per il braccio umano
-    A0_u0 = [1, 0, 0, 100;
-                           0, 1, 0, 0;
-                           0, 0, 1, 0;
-                           0, 0, 0, 1];
-    A01_u = denavit(u_q(1), u_d(1), u_a(1), u_alpha(1));
-    A12_u = denavit(u_q(2), u_d(2), u_a(2), u_alpha(2));
-    A23_u = denavit(u_q(3), u_d(3), u_a(3), u_alpha(3));
-    A34_u = denavit(u_q(4), u_d(4), u_a(4), u_alpha(4));
-    
-    
-    % Matrici di trasformazione dal sistema zero a ogni joint:  
+% images sizes
+depthWidth = kz.DepthWidth; 
+depthHeight = kz.DepthHeight; 
+outOfRange = 2000;
 
-    A02_u = A01_u * A12_u;
-    A03_u = A02_u * A23_u;
-    A04_u = A03_u * A34_u;
-   
+% Create matrices for the images
+depth = zeros(depthHeight,depthWidth,'uint16');
+pc = zeros(depthHeight*depthWidth,3);
 
-    set(human_arm.hLink(1), 'Matrix', A01_u);
-    set(human_arm.hLink(2), 'Matrix', A12_u);
-    
-    set(human_arm.hLink(3), 'Matrix', A23_u);
-    
-    set(human_arm.hLink(4), 'Matrix', A34_u);
+% depth stream figure
+f3=figure;
+h1 = imshow(depth,[0 outOfRange]);
+title('Depth Source (press q to exit)')
+colormap('Jet')
+colorbar
+set(f3,'keypress','k=get(f1,''currentchar'');'); % listen keypress
 
+ % point cloud figure
+    f2=figure;
+    pcax = axes;
+    set(f2,'keypress','k=get(f2,''currentchar'');'); % listen keypress
 
 
-    %prova con linee
-    % Creazione dei punti 
-    P0x = 100; P0y = 0; P0z = 0;
-    P1x = A01_u(1,4); P1y = A01_u(2,4); P1z = A01_u(3,4);
-    P2x = A02_u(1,4); P2y = A02_u(2,4); P2z = A02_u(3,4);
-    P3x = A03_u(1,4); P3y = A03_u(2,4); P3z = A03_u(3,4);
-    P4x = A04_u(1,4); P4y = A04_u(2,4); P4z = A04_u(3,4);
-    
-    l1 = line ([P0x P1x P2x P3x P4x], [P0y P1y P2y P3y P4y],[P0z P1z P2z P3z P4z]);
     % inizializza la figura di visualizzazione
     figure(1);
     grid on;
@@ -187,206 +154,353 @@ n = 50;
     
     frame_handles = [];
     color = rand(1,3);
-    color_u = rand(1,3);
-    
-
-for i=1:n
    
- 
-    disp(T06_current);
-    disp(T06_target);
-    if T06_current(1:3,4) == T06_target(1:3,4)
-        disp('Target reached');
-        break;
-    end
-        
-        disp('i is:');
-        disp(i);
-        % Position interpolation (translation part)
-        p_start = T06_current(1:3, 4);  % Current position
-        p_end = T06_target(1:3, 4);     % Target position
-        p_current = p_start + (p_end - p_start) * (i/n);
-        
-        % Orientation interpolation (rotation part)
-        % You might want to use quaternion interpolation (SLERP) for better results
-        R_start = T06_current(1:3, 1:3);  % Current rotation matrix
-        R_end = T06_target(1:3, 1:3);      % Target rotation matrix
-        
-        % Simple linear interpolation of rotation matrices
-        R_current = R_start + (R_end - R_start) * (i/n);
-       
-        
-        % Construct interpolated transformation matrix
-        T06_current = eye(4);
-        T06_current(1:3, 1:3) = R_current;
-        T06_current(1:3, 4) = p_current;
-    
-        q = inverse_kinematics(T06_current, 1, 1, 1);
-    
-        % check delle distaze di ogni link 
-        [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,u_q,u_d,u_a,u_alpha);
-        
-        pt = T06_target(1:3,4);
-        Te = T06_current(1:3,4);
-        disp(D);
-        if any(D<100, 'all')
-            QP = collision_avoidance(C1,C2,V1,V2,V3,V4,V5,V6,pt,Te,q,d,a,alpha);  % da sviluppare
-            q = q + 1 * QP;             % q_n = q_o + q_dot * dt
-            T06_current = forward_kinematics(q,d,a,alpha);
-        else
-            % q = inverse_kinematics(T06_current, 1, 1, 1);
-            T06_current = forward_kinematics(q,d,a,alpha);
-        end
-    
-        if ~isempty(frame_handles)
-            delete(frame_handles);
-            frame_handles = [];
-        end
-    
-        disp('The new angles are:');
-        disp(q);
-       
-        disp('Updating SSV');
-    
-         % Matrici di trasformazione:
-        A01 = denavit(q(1), d(1), a(1), alpha(1));
-        A12 = denavit(q(2), d(2), a(2), alpha(2));
-        A23 = denavit(q(3), d(3), a(3), alpha(3));
-        A34 = denavit(q(4), d(4), a(4), alpha(4));
-        A45 = denavit(q(5), d(5), a(5), alpha(5));
-        A56 = denavit(q(6), d(6), a(6), alpha(6));
-        
-        
-        % Matrici di trasformazione dal sistema zero a ogni joint:  
-        A02 = A01 * A12;
-        A03 = A02 * A23;
-        A04 = A03 * A34;
-        A05 = A04 * A45;
-        A06 = A05 * A56;
-    
-        set(robot.hLink(1), 'Matrix', A01);
-        set(robot.hLink(2), 'Matrix', A12);
-        
-        set(robot.hLink(3), 'Matrix', A23);
-        
-        set(robot.hLink(4), 'Matrix', A34);
-       
-        set(robot.hLink(5), 'Matrix', A45);
-        
-        set(robot.hLink(6), 'Matrix', A56);
-        
-        % Creazione dei punti 
-        % Draw SSV for each link
-        h = gobjects(1, robot.n);
-        u_h = gobjects(1, human_arm.n);
-        for j = 1:robot.n
-    
-        
-            if j == 2
-                robot.SSV(j).R = [25,25]; 
-                robot.SSV(j).L = [-d2,-a3];        % Length
-                robot.SSV(j).rot(:, :, 1) = eye(4);      % No rotation
-                robot.SSV(j).shift(:, :, 1) = eye(4);    % No shift
-                % Segment 2 (aligned with X-axis)
-                robot.SSV(j).rot(:, :, 2) = [0, 0, -1, 0;
-                               0, 1, 0, 0;
-                               1, 0, 0, 0;
-                               0, 0, 0, 1];
-        
-                robot.SSV(j).shift(:, :, 2) =  eye(4); 
-            elseif j == 3
-                robot.SSV(j).R = [25,25]; 
-                robot.SSV(j).L = [-d3,-a4];        % Length
-                robot.SSV(j).rot(:, :, 1) = eye(4);      % No rotation
-                robot.SSV(j).shift(:, :, 1) = eye(4);    % No shift
-                % Segment 2 (aligned with X-axis)
-                robot.SSV(j).rot(:, :, 2) = [0, 0, -1, 0;
-                               0, 1, 0, 0;
-                               1, 0, 0, 0;
-                               0, 0, 0, 1];
-                
-                robot.SSV(j).shift(:, :, 2) =  eye(4);   
-            else
-        
-                robot.SSV(j).R = 25; 
-                robot.SSV(j).L = -Links(j);        % Length
-                robot.SSV(j).rot = eye(4);   % Rotation matrix
-                robot.SSV(j).shift = eye(4); % Shift matrix
-            end
-        
-            if j <= length(robot.SSV)
-    
-                drawSSV(robot, j, 'points', 40, ...
-                    'FaceColor', color, ...  % Random color for each link
-                    'FaceAlpha', 0.7, ...       
-                    'EdgeColor', color);
-                hold on
-    
-            end
-    
-            
-         for k=1:human_arm.n
+   
+    % Loop until pressing 'q' on any figure
+    k=[];
 
-                if k~=1
-                     human_arm.SSV(k).R = 25; 
-                        human_arm.SSV(k).L = -u_links(k);    
-                        human_arm.SSV(k).shift = eye(4);
-                        human_arm.SSV(k).rot = [
-                        0, 0, 1, 0;
-                        0, 1, 0, 0;
-                        -1, 0, 0, 0;
-                        0, 0, 0, 1
-                    ];
-                        % drawSSV(human_arm, k, 'points', 40, ...
-                        %     'FaceColor', color_u, ...  % Random color for each link
-                        %     'FaceAlpha', 0.7, ...       
-                        %     'EdgeColor', color_u);
-                          
-           
+    disp('Press q on any figure to exit')
+    downSample = 2; % subsample pointcloud
+    
+    %get the point cloud data
+    validData = kz.getframes('color','depth');
+    if validData
+        depth = kz.getdepth;
+        for i=1:depthHeight
+            for j=1:depthWidth
+                if depth(i,j) < 600 && depth(i,j) > 450
+                    new_depth(i,j) = depth(i,j);
                 else
-                        human_arm.SSV(k).R = 25; 
-                        human_arm.SSV(k).L = -u_links(k);    
-                        human_arm.SSV(k).shift = eye(4);
-                        human_arm.SSV(k).rot = eye(4);
+                    new_depth(i,j) = 2000;
                 end
-                
-                drawSSV(human_arm, k, 'points', 40, ...
-                            'FaceColor', color_u, ...  % Random color for each link
-                            'FaceAlpha', 0.7, ...       
-                            'EdgeColor', color_u);
-                    hold on
-                
-         end
-       
-    
+
+            end
         end
-    
+        set(h1,'CData',new_depth);
+         
         
+         % Obtain the point cloud with color
+        [pc, pcColors] = kz.getpointcloud('output','raw','color','true');
+        pcColors = double(pcColors)/255.0;
+
+        percentage = 0.8;  % Keep 80% of points
+        numPoints = size(pc, 1);
+        numKeep = round(numPoints * percentage);
+        indices = randperm(numPoints, numKeep);
+        pc = pc(indices, :);
+        pcColors = pcColors(indices, :);
+
+        for i=1:73728
+            
+                if pc(i,3) < 600 && pc(i,3) > 450
+                    new_pc(i,1) = pc(i,1);
+                    new_pc(i,2) = pc(i,2);
+                    new_pc(i,3) = pc(i,3);
+
+                
+                end 
+        end
+
+       
+        R = [0 0 -1;
+            1 0 0 ;
+            0 -1 0 ;
+            ];
+        t = [600 200 50];
+
+        rotated_points = (R * new_pc')'; % Transpose, multiply, and transpose back
+
+        % Apply translation
+        points_robot = rotated_points + t; % Add translation (broadcasting over rows)
+        scatter3(pcax,points_robot(:,1),points_robot(:,2),points_robot(:,3),6,points_robot,'Marker','.');
+        axis(pcax,[-800 800 -800 800 0 2000])
+        xlabel(pcax,'X'), ylabel(pcax,'Y'), zlabel(pcax,'Z');
+        view(pcax,0,-90);
+       
+    end
+
+   
+    for i=1:n
+        disp(i);
+        disp('Current pose T06');
+        disp(T06_current);
+        disp('Target pose');
+        disp(T06_target);
+        if T06_current(1:3,4) == T06_target(1:3,4)
+            disp('Target reached');
+            break;
+        end
+            
+      
+            % Position interpolation (translation part)
+            p_start = T06_current(1:3, 4);  % Current position
+            p_end = T06_target(1:3, 4);     % Target position
+            p_current = p_start + (p_end - p_start) * (i/n);
+            
+            % Orientation interpolation (rotation part)
+            % You might want to use quaternion interpolation (SLERP) for better results
+            R_start = T06_current(1:3, 1:3);  % Current rotation matrix
+            R_end = T06_target(1:3, 1:3);      % Target rotation matrix
+            
+            % Simple linear interpolation of rotation matrices
+            R_current = R_start + (R_end - R_start) * (i/n);
+           
+            
+            % Construct interpolated transformation matrix
+            T06_current = eye(4);
+            T06_current(1:3, 1:3) = R_current;
+            T06_current(1:3, 4) = p_current;
+        
+            q = inverse_kinematics(T06_current, 1, 1, 1);
+        
+            % check delle distaze di ogni link 
+            [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,points_robot);
+            
+            pt = T06_target(1:3,4);
+            Te = T06_current(1:3,4);
+            disp('The distances are:');
+            disp(D);
+            if any(D<100, 'all')
+                QP = collision_avoidance(C1,C2,V1,V2,V3,V4,V5,V6,pt,Te,q,d,a,alpha);  % da sviluppare
+                q = q + 1 * QP;             % q_n = q_o + q_dot * dt
+                T06_current = forward_kinematics(q,d,a,alpha);
+            else
+                % q = inverse_kinematics(T06_current, 1, 1, 1);
+                T06_current = forward_kinematics(q,d,a,alpha);
+            end
+            % T06_current = forward_kinematics(q,d,a,alpha);
+            if ~isempty(frame_handles)
+                delete(frame_handles);
+                frame_handles = [];
+            end
+        
+            disp('The new angles are:');
+            disp(q);
+           
+            disp('Updating SSV');
+        
+             % Matrici di trasformazione:
+            A01 = denavit(q(1), d(1), a(1), alpha(1));
+            A12 = denavit(q(2), d(2), a(2), alpha(2));
+            A23 = denavit(q(3), d(3), a(3), alpha(3));
+            A34 = denavit(q(4), d(4), a(4), alpha(4));
+            A45 = denavit(q(5), d(5), a(5), alpha(5));
+            A56 = denavit(q(6), d(6), a(6), alpha(6));
+            
+            
+            % Matrici di trasformazione dal sistema zero a ogni joint:  
+            A02 = A01 * A12;
+            A03 = A02 * A23;
+            A04 = A03 * A34;
+            A05 = A04 * A45;
+            A06 = A05 * A56;
+        
+            set(robot.hLink(1), 'Matrix', A01);
+            set(robot.hLink(2), 'Matrix', A12);
+            
+            set(robot.hLink(3), 'Matrix', A23);
+            
+            set(robot.hLink(4), 'Matrix', A34);
+           
+            set(robot.hLink(5), 'Matrix', A45);
+            
+            set(robot.hLink(6), 'Matrix', A56);
+            
+            % Creazione dei punti 
+            % Draw SSV for each link
+            h = gobjects(1, robot.n);
+            
+            for j = 1:robot.n
+        
+            
+                if j == 2
+                    robot.SSV(j).R = [25,25]; 
+                    robot.SSV(j).L = [-d2,-a3];        % Length
+                    robot.SSV(j).rot(:, :, 1) = eye(4);      % No rotation
+                    robot.SSV(j).shift(:, :, 1) = eye(4);    % No shift
+                    % Segment 2 (aligned with X-axis)
+                    robot.SSV(j).rot(:, :, 2) = [0, 0, -1, 0;
+                                   0, 1, 0, 0;
+                                   1, 0, 0, 0;
+                                   0, 0, 0, 1];
+            
+                    robot.SSV(j).shift(:, :, 2) =  eye(4); 
+                elseif j == 3
+                    robot.SSV(j).R = [25,25]; 
+                    robot.SSV(j).L = [-d3,-a4];        % Length
+                    robot.SSV(j).rot(:, :, 1) = eye(4);      % No rotation
+                    robot.SSV(j).shift(:, :, 1) = eye(4);    % No shift
+                    % Segment 2 (aligned with X-axis)
+                    robot.SSV(j).rot(:, :, 2) = [0, 0, -1, 0;
+                                   0, 1, 0, 0;
+                                   1, 0, 0, 0;
+                                   0, 0, 0, 1];
+                    
+                    robot.SSV(j).shift(:, :, 2) =  eye(4);   
+                else
+            
+                    robot.SSV(j).R = 25; 
+                    robot.SSV(j).L = -Links(j);        % Length
+                    robot.SSV(j).rot = eye(4);   % Rotation matrix
+                    robot.SSV(j).shift = eye(4); % Shift matrix
+                end
+            
+                if j <= length(robot.SSV)
+        
+                    drawSSV(robot, j, 'points', 40, ...
+                        'FaceColor', color, ...  % Random color for each link
+                        'FaceAlpha', 0.7, ...       
+                        'EdgeColor', color);
+                    hold on
+        
+                end
+            
+            
+            end
+        
+     
     
         % Display all the joints frames of robot and human arm:
      
         %target
+        L =50;
         hold on
         plot3(T06_target(1,4),T06_target(2,4),T06_target(3,4),'b*')
-    
-        L =50;
-    
-        frame_handles = [frame_handles; disframe(eye(4), L, 'o')]; 
-        frame_handles = [frame_handles; disframe(A01, L, 'none')];    
-        frame_handles = [frame_handles; disframe(A02, L, 'none')];   
-        frame_handles = [frame_handles; disframe(A03, L, 'none')];
-        frame_handles = [frame_handles; disframe(A04, L, 'none')];
-        frame_handles = [frame_handles; disframe(A05, L, 'none')];
-        frame_handles = [frame_handles; disframe(A06, L, 'v')];
+        scatter3(points_robot(:,1),points_robot(:,2),points_robot(:,3),6,'k','Marker','.');
+        hold on
+        
 
-        frame_handles = [frame_handles; disframe(A0_u0, L, 'o')]; 
-        frame_handles = [frame_handles; disframe(A01_u, L, 'none')];    
-        frame_handles = [frame_handles; disframe(A02_u, L, 'none')];   
-        frame_handles = [frame_handles; disframe(A03_u, L, 'none')];
-        frame_handles = [frame_handles; disframe(A04_u, L, 'none')];
+        % frame_handles = [frame_handles; disframe(eye(4), L, 'o')]; 
+        % frame_handles = [frame_handles; disframe(A01, L, 'none')];    
+        % frame_handles = [frame_handles; disframe(A02, L, 'none')];   
+        % frame_handles = [frame_handles; disframe(A03, L, 'none')];
+        % frame_handles = [frame_handles; disframe(A04, L, 'none')];
+        % frame_handles = [frame_handles; disframe(A05, L, 'none')];
+        % frame_handles = [frame_handles; disframe(A06, L, 'v')];
+
+       
         
         drawnow;
-        pause(0.2);
+        pause(2);
 end
 
   
+
+
+%% Introduzione orbbec
+
+addpath('../Orbbec/KinZ-Matlab-master/Mex/')
+% addpath('../Mex');
+clear all
+close all
+
+% Create KinZ object and initialize it
+% Available options: 
+% '720p', '1080p', '1440p', '1535p', '2160p', '3072p'
+% 'binned' or 'unbinned'
+% 'wfov' or 'nfov'
+kz = KinZ('720p', 'binned', 'nfov');
+
+% images sizes
+depthWidth = kz.DepthWidth; 
+depthHeight = kz.DepthHeight; 
+outOfRange = 2000;
+
+% Create matrices for the images
+depth = zeros(depthHeight,depthWidth,'uint16'); 
+pc = zeros(depthHeight*depthWidth,3);
+
+% depth stream figure
+f1=figure;
+h1 = imshow(depth,[0 outOfRange]);
+title('Depth Source (press q to exit)')
+colormap('Jet')
+colorbar
+set(f1,'keypress','k=get(f1,''currentchar'');'); % listen keypress
+
+% point cloud figure
+f2=figure;
+pcax = axes;
+set(f2,'keypress','k=get(f2,''currentchar'');'); % listen keypress
+
+% Loop until pressing 'q' on any figure
+k=[];
+
+disp('Press q on any figure to exit')
+downSample = 2; % subsample pointcloud
+while true
+    % Get frames from Kinect and save them on underlying buffer
+    validData = kz.getframes('color','depth');
+    
+    % Before processing the data, we need to make sure that a valid
+    % frame was acquired.
+    if validData
+        % Copy data to Matlab matrices
+        depth = kz.getdepth;
+        for i=1:depthHeight
+            for j=1:depthWidth
+                if depth(i,j) < 600 && depth(i,j) > 450
+                    new_depth(i,j) = depth(i,j);
+                else
+                    new_depth(i,j) = 2000;
+                end
+
+            end
+        end
+        try
+            set(h1,'CData',new_depth); 
+        catch
+            break; % break the main loop 
+        end
+        
+        % Obtain the point cloud with color
+        [pc, pcColors] = kz.getpointcloud('output','raw','color','true');
+        pcColors = double(pcColors)/255.0;
+        
+        percentage = 0.8;  % Keep 80% of points
+        numPoints = size(pc, 1);
+        numKeep = round(numPoints * percentage);
+        indices = randperm(numPoints, numKeep);
+        pc = pc(indices, :);
+        pcColors = pcColors(indices, :);
+
+        for i=1:73728
+            
+                if pc(i,3) < 600 && pc(i,3) > 450
+                    new_pc(i,1) = pc(i,1);
+                    new_pc(i,2) = pc(i,2);
+                    new_pc(i,3) = pc(i,3);
+
+                
+                end 
+        end
+
+        disp(max(new_pc(:,3)))
+        try
+            scatter3(pcax,new_pc(:,1),new_pc(:,2),new_pc(:,3),6,new_pc,'Marker','.');
+            axis(pcax,[-800 800 -800 800 0 2000])
+            xlabel(pcax,'X'), ylabel(pcax,'Y'), zlabel(pcax,'Z');
+            view(pcax,46,29);
+        catch
+            break; % break the main loop 
+        end
+
+    end
+    
+    % If user presses 'q', exit loop
+    if ~isempty(k)
+        if strcmp(k,'q')
+            break;
+        elseif strcmp(k,'p')
+            pause;
+        end
+        k = [];
+    end
+  
+    pause(0.02)
+end
+
+% Close kinect object
+kz.delete;
+
+%close all;

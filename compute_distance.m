@@ -1,6 +1,6 @@
 %% this script contains the function to compute the distance between robot and human arm
 
-function [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,q_u,d_u,a_u,alpha_u)
+function [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,pointcloud_arm)
 
 %   ROBOT
     A01 = denavit(q(1), d(1), a(1), alpha(1));
@@ -17,20 +17,6 @@ function [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,q_u,d_u,a_u,
     A05 = A04 * A45;
     A06 = A05 * A56;
 
-%computes the point of the segments
-% Robot
-% P1 = [A01(1,4), A01(2,4), A01(3,4)];  %shoulder
-% Q1 = [A02(1,4), A02(2,4), A02(3,4)];
-% 
-% P2 = [A03(1,4), A03(2,4), A03(3,4)];  %elbow
-% Q2 = [A04(1,4), A04(2,4), A04(3,4)];
-% 
-% P3 = [A04(1,4), A04(2,4), A04(3,4)];  %wrist
-% Q3 = [A06(1,4), A06(2,4), A06(3,4)];
-% 
-% v1 = Q1-P1;
-% v2 = Q2-P2;
-% v3 = Q3-P3;
 
 P1 = [0,0,0];
 Q1 = [A01(1,4), A01(2,4), A01(3,4)];
@@ -57,29 +43,98 @@ v4 = Q4-P4;
 v5 = Q5-P5;
 v6 = Q6-P6;
 
-% HUMAN ARM
+%sostituire con i punti dal pointcloud
 
-    A01_u = denavit(q_u(1), d_u(1), a_u(1), alpha_u(1));
-    A12_u = denavit(q_u(2), d_u(2), a_u(2), alpha_u(2));
-    A23_u = denavit(q_u(3), d_u(3), a_u(3), alpha_u(3));
-    A34_u = denavit(q_u(4), d_u(4), a_u(4), alpha_u(4));
-   
-
-% Matrici di trasformazione dal sistema zero a ogni joint:  
-    A02_u = A01_u * A12_u;
-    A03_u = A02_u * A23_u;
-    A04_u = A03_u * A34_u;
     
 
 % Human arm
-P1_u = [A01_u(1,4), A01_u(2,4), A01_u(3,4)];  %shoulder
-Q1_u = [A02_u(1,4), A02_u(2,4), A02_u(3,4)];
+numPoints = size(pointcloud_arm, 1);
 
-P2_u = [A02_u(1,4), A02_u(2,4), A02_u(3,4)];  %elbow
-Q2_u = [A03_u(1,4), A03_u(2,4), A03_u(3,4)];
+value_right = max(pointcloud_arm(:,2)); % point that is the most to the right
+for i=1:numPoints
+    if pointcloud_arm(i,2) == value_right
+        index=i;
+        disp(index);
+        break;
+    end
 
-P3_u = [A03_u(1,4), A03_u(2,4), A03_u(3,4)];  %wrist
-Q3_u = [A04_u(1,4), A04_u(2,4), A04_u(3,4)];
+end
+
+human_right(1) = pointcloud_arm(index,1);
+human_right(2) = pointcloud_arm(index,2);
+human_right(3) = pointcloud_arm(index,3);
+
+value_left = min(pointcloud_arm(:, 2));   % point that is the most to the left
+
+
+for i=1:numPoints
+    if pointcloud_arm(i,2) == value_left
+        index=i;
+        disp(index);
+        break;
+    end
+
+end
+
+human_left(1) = pointcloud_arm(index,1);
+human_left(2) = pointcloud_arm(index,2);
+human_left(3) = pointcloud_arm(index,3);
+
+difference = (human_right(2) - abs(human_left(2)));
+
+
+% Define thresholds for middle-left and middle-right
+threshold_left = (value_left + difference) / 2;  % Closer to left
+threshold_right = (difference + value_right) / 2; % Closer to right
+
+
+% we find another point that is in the middle between the two
+for i=1:numPoints
+    
+     if pointcloud_arm(i,2)> value_left  & pointcloud_arm(i,2)< threshold_left 
+            human_middle_sx= pointcloud_arm(i, :);
+            disp('human_middle sinistro');
+            disp(human_middle_sx);
+            break;
+     else
+         continue;
+     end 
+
+end
+
+for i=1:numPoints
+    
+     if pointcloud_arm(i,2)> threshold_right & pointcloud_arm(i,2)< value_right %& pointcloud_arm ~= human_middle_sx(2)
+            human_middle_dx = pointcloud_arm(i, :);
+            disp('human_middle destro');
+            disp(human_middle_dx);
+            break;
+     else
+         continue;
+     end
+
+end
+
+disp('value left');
+disp(value_left);
+disp(human_left);
+disp(human_right);
+
+disp('threshold sx');
+disp(threshold_left);
+
+disp('threshold dx');
+disp(threshold_right);
+
+
+P1_u = human_left;
+Q1_u = human_middle_sx;
+
+P2_u = human_middle_sx;  %elbow
+Q2_u = human_middle_dx;
+
+P3_u = human_middle_dx;  %wrist
+Q3_u = human_right;
 
 v1U = Q1_u - P1_u;
 v2U = Q2_u - P2_u;
@@ -104,7 +159,7 @@ if denom ~= 0   %diverso da 0
             s = Clamp(s);
         else 
             s=0;
-           
+
  end
         t = (b*s+f)/e;
         if t<0
@@ -116,7 +171,7 @@ if denom ~= 0   %diverso da 0
             s = (b-c)/a;
             s = Clamp(s);
         end
-    
+
 c1 = P(i,:) + v(i,:)*s;
 c2 = PU(j,:) + vU(j,:)*t;
 D(i,j) = sqrt(dot(c1-c2,c1-c2));   % MATRICE DISTANZE RELATIVE    % righe = robot, colonne = umano

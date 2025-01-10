@@ -252,13 +252,13 @@ QP5 = [qp5', zeros(1,numZerosToAdd5)];   % vettore [1x6]   con gli zeri
 
 %calcolo le q attrative totali e le q repulsive totali
 QP_rep = QP1 + QP2 + QP3 + QP4 + QP5;
-disp('The total repulsive is');
+% disp('The total repulsive is');
 % disp(QP_rep);
 
 J_invt= pinv(J6);
 QP_att = J_invt * Vcw; 
 % QP_att = 0; 
-disp('The total attractive is:');
+% disp('The total attractive is:');
 % disp(QP_att);
 
 QP = QP_att' + QP_rep;
