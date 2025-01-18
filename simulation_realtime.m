@@ -3,7 +3,7 @@ clc
 clear all
 close all
 
-addpath('../Orbbec/KinZ-Matlab-master/Mex/');
+addpath('../KinZ-Matlab-master/Mex/');
 
 % The robot considered is a TM5-700 Techman cobot with 6dof non redundand
 % with the following parameters in mm:
@@ -171,10 +171,91 @@ k=[];
 disp('Press q on any figure to exit')
 downSample = 2; % subsample pointcloud
     
+% while true
+%     % Get frames from Kinect and save them on underlying buffer
+%     % 'color','depth','infrared'
+%     validData = kz.getframes('color','depth', 'bodies');
+% 
+%     % Before processing the data, we need to make sure that a valid
+%     % frame was acquired.
+%     if validData
+%         % Copy data to Matlab matrices        
+%         [depth, depthTimestamp] = kz.getdepth;
+%         [color, colorTimestamp] = kz.getcolor;
+%         numBodies = kz.getnumbodies;
+%         disp(numBodies)
+%         bodies = kz.getbodies();    
+% 
+%         % update depth figure
+%         e.im = imshow(depth, 'Parent', e.ax);
+% 
+%         % update color figure
+%         color = imresize(color,colorScale);
+%         c.im = imshow(color, 'Parent', c.ax);
+% 
+%         % Draw bodies on depth image
+%         kz.drawbodies(e.ax,bodies,'depth',2, 1);
+% 
+%         % Draw bodies on color image
+%         kz.drawbodies(c.ax,bodies,'color',2, 1);
+% 
+%         if numBodies > 0 
+%             shoulder_point = bodies.Position3d(:,13);
+%             disp(shoulder_point);
+%             elbow_point = bodies.Position3d(:,14);
+%             wrist_point = bodies.Position3d(:,15);
+%             hand_point = bodies.Position3d(:,16);
+% 
+%                 R = [0 0 -1;
+%                     1 0 0 ;
+%                     0 -1 0 ;
+%                     ];
+%                 t = [850 200 50]';
+% 
+%                 shoulder_rotated = (R * shoulder_point);
+%                 elbow_rotated = (R * elbow_point);
+%                 wrist_rotated = (R * wrist_point);
+%                 hand_rotated = (R * hand_point);
+% 
+%                 shoulder_translated = shoulder_rotated + t;
+%                 elbow_translated = elbow_rotated +t;
+%                 wrist_translated = wrist_rotated +t;
+%                 hand_translated = hand_rotated +t;
+% 
+% 
+%         end
+% 
+% 
+% 
+%     end
+
+    %     % If user presses 'q', exit loop
+    % if ~isempty(k)
+    %     if strcmp(k,'q'); break; end
+    %     k = [];
+    % end
+  
+%     pause(0.01)
+% end
+
 while true
-    % Get frames from Kinect and save them on underlying buffer
-    % 'color','depth','infrared'
-    validData = kz.getframes('color','depth', 'bodies');
+  
+        disp('Current pose T06');
+        disp(T06_current);
+        disp('Target pose');
+        disp(T06_target);
+        if T06_current(1:3,4) == T06_target(1:3,4)
+            disp('Target reached');
+            break;
+        end
+        % in questo modo sarà a distanza molto grande e farà direttamente
+        % inverse kinematics
+        shoulder_translated = [10000;10000;10000];
+        elbow_translated = [10000;10000;10000];
+        wrist_translated = [10000;10000;10000];
+        hand_translated = [10000;10000;10000];
+            
+     validData = kz.getframes('color','depth', 'bodies');
     
     % Before processing the data, we need to make sure that a valid
     % frame was acquired.
@@ -222,55 +303,10 @@ while true
                 wrist_translated = wrist_rotated +t;
                 hand_translated = hand_rotated +t;
         
-                % Apply translation
-                % human_arm = [shoulder_translated; elbow_translated'; wrist_translated'; hand_translated'];
-                % disp('human arm');
-                % disp(human_arm);
+           
         end
-
-           
-           
     end
 
-        % If user presses 'q', exit loop
-    if ~isempty(k)
-        if strcmp(k,'q'); break; end
-        k = [];
-    end
-  
-    pause(0.01)
-end
-
-  for i=1:n
-        disp(i);
-        disp('Current pose T06');
-        disp(T06_current);
-        disp('Target pose');
-        disp(T06_target);
-        if T06_current(1:3,4) == T06_target(1:3,4)
-            disp('Target reached');
-            break;
-        end
-
-
-            % Position interpolation (translation part)
-            p_start = T06_current(1:3, 4);  % Current position
-            p_end = T06_target(1:3, 4);     % Target position
-            p_current = p_start + (p_end - p_start) * (i/n);
-
-            % Orientation interpolation (rotation part)
-            % You might want to use quaternion interpolation (SLERP) for better results
-            R_start = T06_current(1:3, 1:3);  % Current rotation matrix
-            R_end = T06_target(1:3, 1:3);      % Target rotation matrix
-
-            % Simple linear interpolation of rotation matrices
-            R_current = R_start + (R_end - R_start) * (i/n);
-
-
-            % Construct interpolated transformation matrix
-            T06_current = eye(4);
-            T06_current(1:3, 1:3) = R_current;
-            T06_current(1:3, 4) = p_current;
 
             q = inverse_kinematics(T06_current, 1, 1, 1);
 
@@ -283,11 +319,32 @@ end
             disp(D);
             if any(D<100, 'all')
                 QP = collision_avoidance(C1,C2,V1,V2,V3,V4,V5,V6,pt,Te,q,d,a,alpha);  % da sviluppare
-                q = q + 1 * QP;             % q_n = q_o + q_dot * dt
+                q = q + 0.5 * QP;             % q_n = q_o + q_dot * dt
                 T06_current = forward_kinematics(q,d,a,alpha);
             else
-                % q = inverse_kinematics(T06_current, 1, 1, 1);
-                T06_current = forward_kinematics(q,d,a,alpha);
+
+                
+                 
+                p_start = T06_current(1:3, 4);  % Current position
+                p_end = T06_target(1:3, 4);     % Target position
+                p_current = p_start + (p_end - p_start) * 0.05;
+    
+                % Orientation interpolation (rotation part)
+                % You might want to use quaternion interpolation (SLERP) for better results
+                R_start = T06_current(1:3, 1:3);  % Current rotation matrix
+                R_end = T06_target(1:3, 1:3);      % Target rotation matrix
+    
+                % Simple linear interpolation of rotation matrices
+                R_current = R_start + (R_end - R_start) * 0.05;
+    
+    
+                % Construct interpolated transformation matrix
+                T06_current = eye(4);
+                T06_current(1:3, 1:3) = R_current;
+                T06_current(1:3, 4) = p_current;
+
+                q = inverse_kinematics(T06_current, 1, 1, 1);
+                % T06_current = forward_kinematics(q,d,a,alpha);
             end
             % T06_current = forward_kinematics(q,d,a,alpha);
             if ~isempty(frame_handles)
@@ -409,5 +466,6 @@ end
 
 
         drawnow;
-        pause(2);
+        pause(0.5);
+       
   end

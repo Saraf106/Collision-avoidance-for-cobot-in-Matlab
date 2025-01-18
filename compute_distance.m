@@ -1,6 +1,6 @@
 %% this script contains the function to compute the distance between robot and human arm
 
-function [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,pointcloud_arm)
+function [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,shoulder_translated, elbow_translated, wrist_translated, hand_translated)
 
 %   ROBOT
     A01 = denavit(q(1), d(1), a(1), alpha(1));
@@ -47,94 +47,103 @@ v6 = Q6-P6;
 
     
 
-% Human arm
-numPoints = size(pointcloud_arm, 1);
+% % Human arm
+% numPoints = size(pointcloud_arm, 1);
+% 
+% value_right = max(pointcloud_arm(:,2)); % point that is the most to the right
+% for i=1:numPoints
+%     if pointcloud_arm(i,2) == value_right
+%         index=i;
+%         disp(index);
+%         break;
+%     end
+% 
+% end
+% 
+% human_right(1) = pointcloud_arm(index,1);
+% human_right(2) = pointcloud_arm(index,2);
+% human_right(3) = pointcloud_arm(index,3);
+% 
+% value_left = min(pointcloud_arm(:, 2));   % point that is the most to the left
+% 
+% 
+% for i=1:numPoints
+%     if pointcloud_arm(i,2) == value_left
+%         index=i;
+%         disp(index);
+%         break;
+%     end
+% 
+% end
+% 
+% human_left(1) = pointcloud_arm(index,1);
+% human_left(2) = pointcloud_arm(index,2);
+% human_left(3) = pointcloud_arm(index,3);
+% 
+% difference = (human_right(2) - abs(human_left(2)));
+% 
+% 
+% % Define thresholds for middle-left and middle-right
+% threshold_left = (value_left + difference) / 2;  % Closer to left
+% threshold_right = (difference + value_right) / 2; % Closer to right
+% 
+% 
+% % we find another point that is in the middle between the two
+% for i=1:numPoints
+% 
+%      if pointcloud_arm(i,2)> value_left  & pointcloud_arm(i,2)< threshold_left 
+%             human_middle_sx= pointcloud_arm(i, :);
+%             disp('human_middle sinistro');
+%             disp(human_middle_sx);
+%             break;
+%      else
+%          continue;
+%      end 
+% 
+% end
+% 
+% for i=1:numPoints
+% 
+%      if pointcloud_arm(i,2)> threshold_right & pointcloud_arm(i,2)< value_right %& pointcloud_arm ~= human_middle_sx(2)
+%             human_middle_dx = pointcloud_arm(i, :);
+%             disp('human_middle destro');
+%             disp(human_middle_dx);
+%             break;
+%      else
+%          continue;
+%      end
+% 
+% end
+% 
+% disp('value left');
+% disp(value_left);
+% disp(human_left);
+% disp(human_right);
+% 
+% disp('threshold sx');
+% disp(threshold_left);
+% 
+% disp('threshold dx');
+% disp(threshold_right);
 
-value_right = max(pointcloud_arm(:,2)); % point that is the most to the right
-for i=1:numPoints
-    if pointcloud_arm(i,2) == value_right
-        index=i;
-        disp(index);
-        break;
-    end
 
-end
+% P1_u = human_left;
+% Q1_u = human_middle_sx;
+% 
+% P2_u = human_middle_sx;  %elbow
+% Q2_u = human_middle_dx;
+% 
+% P3_u = human_middle_dx;  %wrist
+% Q3_u = human_right;
 
-human_right(1) = pointcloud_arm(index,1);
-human_right(2) = pointcloud_arm(index,2);
-human_right(3) = pointcloud_arm(index,3);
+P1_u = shoulder_translated';
+Q1_u = elbow_translated';
 
-value_left = min(pointcloud_arm(:, 2));   % point that is the most to the left
+P2_u = elbow_translated';
+Q2_u  = wrist_translated';
 
-
-for i=1:numPoints
-    if pointcloud_arm(i,2) == value_left
-        index=i;
-        disp(index);
-        break;
-    end
-
-end
-
-human_left(1) = pointcloud_arm(index,1);
-human_left(2) = pointcloud_arm(index,2);
-human_left(3) = pointcloud_arm(index,3);
-
-difference = (human_right(2) - abs(human_left(2)));
-
-
-% Define thresholds for middle-left and middle-right
-threshold_left = (value_left + difference) / 2;  % Closer to left
-threshold_right = (difference + value_right) / 2; % Closer to right
-
-
-% we find another point that is in the middle between the two
-for i=1:numPoints
-    
-     if pointcloud_arm(i,2)> value_left  & pointcloud_arm(i,2)< threshold_left 
-            human_middle_sx= pointcloud_arm(i, :);
-            disp('human_middle sinistro');
-            disp(human_middle_sx);
-            break;
-     else
-         continue;
-     end 
-
-end
-
-for i=1:numPoints
-    
-     if pointcloud_arm(i,2)> threshold_right & pointcloud_arm(i,2)< value_right %& pointcloud_arm ~= human_middle_sx(2)
-            human_middle_dx = pointcloud_arm(i, :);
-            disp('human_middle destro');
-            disp(human_middle_dx);
-            break;
-     else
-         continue;
-     end
-
-end
-
-disp('value left');
-disp(value_left);
-disp(human_left);
-disp(human_right);
-
-disp('threshold sx');
-disp(threshold_left);
-
-disp('threshold dx');
-disp(threshold_right);
-
-
-P1_u = human_left;
-Q1_u = human_middle_sx;
-
-P2_u = human_middle_sx;  %elbow
-Q2_u = human_middle_dx;
-
-P3_u = human_middle_dx;  %wrist
-Q3_u = human_right;
+P3_u = wrist_translated';
+Q3_u = hand_translated';
 
 v1U = Q1_u - P1_u;
 v2U = Q2_u - P2_u;
