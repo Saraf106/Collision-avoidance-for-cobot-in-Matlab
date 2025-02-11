@@ -1,22 +1,70 @@
-This repository describes my work done at the University of Padua as a research assistant 
-which led to my Master thesis project. 
-The goal of the project was to develop a collision avoidance algorithm using Matlab for a cobot, in this case the TECHMAN TM5-700 was used.
-The work was done as follows:
-- study of the kinematics of the robot
-- study of the collision avoidance literature and implementation of a new one based on joint velocities
-- implementation of a MATLAB simulation of the robot kinematics and collision avoidance startegy
-- integration of the Orbbec Femto Bolt camera used to detect the position of the human, specifically his arm
-- testing phase done in the laboratory
-To know  more, please read the document: Experimental Validation of a collision avoidance strategy for a collaborative robot.
+# Collision Avoidance for a Collaborative Robot  
+
+This repository contains the work I conducted as a research assistant at the **University of Padua**, which culminated in my **Master's thesis project**. The goal of this project was to develop a **collision avoidance algorithm** for a collaborative robot (cobot) using **MATLAB**. The **TECHMAN TM5-700** was used as the test platform.  
+
+## Project Overview  
+
+The project involved the following steps:  
+
+1. **Kinematic Study**  
+   - Analyzed the kinematics of the TECHMAN TM5-700 cobot.  
+   
+2. **Collision Avoidance Research & Development**  
+   - Studied existing literature on collision avoidance strategies.  
+   - Developed a novel approach based on **joint velocities**.  
+
+3. **MATLAB Simulation**  
+   - Implemented a MATLAB simulation of the robot's kinematics.  
+   - Integrated the collision avoidance strategy into the simulation.  
+
+4. **Human Detection Integration**  
+   - Incorporated the **Orbbec Femto Bolt** camera to detect human positioning, specifically tracking the arm.  
+
+5. **Laboratory Testing**  
+   - Validated the algorithm experimentally in a controlled lab environment.  
+
+For a detailed explanation, please refer to the document:  
+**"Experimental Validation of a Collision Avoidance Strategy for a Collaborative Robot."**  
+
+---
+
+## Code Structure  
+
+During development, I saved intermediate steps as separate scripts, allowing them to be executed independently. However, the following core functions are **dependencies** and cannot be run in isolation:  
+
+- `compute_distance.m`  
+- `collision_avoidance.m`  
+- `disframe.m`  
+- `denavit.m`  
+- `drawSSV.m`  
+
+These functions are used within different simulation scripts, described below:  
+
+### **Simulation Scripts**  
+
+- **`simulation_line_robot.m`**  
+  *Simulates the inverse kinematics of the robot with simplified line segments representing the links.*  
+    ![Robot Line Simulation](images/robot_line2.png)
+
+- **`simulation_SSV_robot.m`**  
+  *Simulates the inverse kinematics with links modeled as **Superquadrics Swept Volumes (SSVs)** for more accurate representation.*  
+    ![Robot SSV Simulation](images/robot_ssv2.png)
+
+- **`simulation_with_human.m`**  
+  *Simulates the robot with SSVs while integrating the human arm model (both line-based and SSV-based).*  
+    ![Robot Human Simulation](images/human_arm.png)
+
+- **`simulation_robot_human.m`**  
+  *Simulates the **collision avoidance strategy** with the robot and human arm, both modeled using SSVs.*  
+    ![Simulation with and without Collision strategy](images/coll_merge.png)
+
+- **`simulation_realtime.m`**  
+  *Implements real-time collision avoidance by integrating the **Orbbec Femto Bolt** camera. Unlike previous simulations, the human arm is modeled using four key points detected by the camera.*  
+    ![Collision strategy Simulation](images/body_track.jpg)
+
+- **`TRIAL_WITH_TECHMAN_COLLAVOIDANCE.m`**  
+  *Used for real-world lab testing of the developed collision avoidance strategy.*  
+    ![Matlab Simulation during test](images/myes_trajs.jpg)
 
 
-Truoughout the process of coding I saved the partial steps that can be run separately.
-The scripts: compute_distance.m, collision_avoidance.m, disframe.m, denavit.m, drawSSV.m are cannot be run separatly but are called inside the different simulations scripts.
-The simualtions are described as follows:
-- simulation_line_robot.m -> performs the simulation of the inverse kinematics of the robot where the links are lines
-- simulation_SSV_robot.m -> performs the simulation of the inverse kinematics of the robot where the links are modeled with SSVs
-- simulation_with_human.m -> performs the simulation of the robot with the SSVs but there is also the integration of the robot arm (both with lines or SSV)
-- simulation_robot_human.m -> performs the simulation of the collision avoidance strategy with the robot and the human arm (both with SSVs)
-- simulation_realtime.m -> it's the simulatio of the collision avoidance strategy with the integration of the camera, so the human arm is not modeled as a robotic arm as before but 4 points detected by the camera are used as starting point for the creation of the arm.
-- TRIAL_WITH_TECHMAN_COLLAVOIDANCE -> it's the script used in the laboratory tests
 
