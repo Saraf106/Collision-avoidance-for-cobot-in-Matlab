@@ -64,7 +64,7 @@ These functions are used within different simulation scripts, described below:
 
 - **`TRIAL_WITH_TECHMAN_COLLAVOIDANCE.m`**  
   *Used for real-world lab testing of the developed collision avoidance strategy.*  
-    ![Matlab Simulation during test](Images/myes_trajs.jpg)
+    ![Matlab Simulation during test](Images/myes_traj3.jpg)
 
 
 
