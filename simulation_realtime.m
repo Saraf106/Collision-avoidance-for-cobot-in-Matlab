@@ -1,9 +1,10 @@
-%% This script simulates the collision avoidance for a 7M5-700 techman cobot with a human arm
+%% This script simulates the collision avoidance for a 7M5-700 techman cobot with a human arm, 
+%% using the Orbbec Femto Bolt camera to get the body detection
 clc
 clear all
 close all
 
-addpath('../KinZ-Matlab-master/Mex/');
+addpath('../Orbbec/KinZ-Matlab-master/Mex/');
 
 % The robot considered is a TM5-700 Techman cobot with 6dof non redundand
 % with the following parameters in mm:
@@ -37,7 +38,7 @@ T06_target = forward_kinematics(q1, d, a, alpha);
 %q0 = [pi/3, pi/4, -pi/6, pi/2, -pi/3, pi/4];
 %q0 = [1.0472 ,  -0.2900  ,  1.1709   , 0.9821   , 4.9603 , 0.6159 ];
 %q0 = [1.0472  , -0.1067 ,   1.0060  ,  0.9514  ,  5.0615, 0.6853];
-q0 = [0.4748   ,-0.8883  ,  2.0036  , -0.5838   , 5.5112,    1.2558];
+q0 = [0.4748  ,-0.8883  ,  2.0036  , -0.5838   , 5.5112,    1.2558];
 T06_current = forward_kinematics(q0, d, a, alpha);
 
 ax = axes;

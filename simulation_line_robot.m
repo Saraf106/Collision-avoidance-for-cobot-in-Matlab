@@ -153,5 +153,7 @@ for i= 1:n
     frame_handles = [frame_handles; disframe(A06, L, 'v')];
           
     drawnow;
-    pause(0.5);
+    % saveas(gcf,'Barchart.png');
+    pause(0);
 end
+

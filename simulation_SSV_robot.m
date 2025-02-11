@@ -24,7 +24,7 @@ alpha = [0, -pi/2, 0, 0, -pi/2, -pi/2];
 
 %% Simulation of the robot with SSV 
 % define the target configuration
-q1 = [pi/3, -2*pi/6, pi/6, 5*pi/6, pi+pi/6, -pi/6];
+q1 = [-0.70 , -0.88, 0.95, -0.58, 1.57, 0];
 T06_target = forward_kinematics(q1, d, a, alpha);
 
 %define the starting configuration
@@ -244,5 +244,6 @@ for i= 1:n
     frame_handles = [frame_handles; disframe(A06, L, 'v')];
           
     drawnow;
+    
     pause(0.5);
 end

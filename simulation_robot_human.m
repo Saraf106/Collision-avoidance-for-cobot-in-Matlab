@@ -25,7 +25,7 @@ alpha = [0, -pi/2, 0, 0, -pi/2, -pi/2];
 
 %disposizione del braccio dalla parte opposta del robot
 u_d = [100, 0, 0, 0];
-u_a = [100, 200, 100, 100];
+u_a = [100, 200, 100, 200];
 u_alpha = [0, -pi/2, 0, 0];
 u_q = [pi/2, 0, 0, 0];
 
@@ -34,16 +34,17 @@ u_q = [pi/2, 0, 0, 0];
 
 % define the target configuration
 % q1 = [pi/3, -2*pi/6, pi/6, 5*pi/6, pi+pi/6, -pi/6];
+%q1= [1.5126  , -1.0235  ,  1.4841   , 0.7455  ,  3.6235 ,   0.4712];
+% q1 = [pi/3, -2*pi/6, pi/6, 5*pi/6, pi+pi/6, -pi/6];
 q1 = [1.5126  , -1.0235  ,  1.4841   , 0.7455  ,  3.6235 ,   0.4712];
-
 T06_target = forward_kinematics(q1, d, a, alpha);
 
 %define the starting configuration
-% q0 = [pi/4, pi/6, -pi/4, pi/3, -pi/6, pi/2];
+ % q0 = [pi/4, pi/6, -pi/4, pi/3, -pi/6, pi/2];
 %q0 = [pi/3, pi/4, -pi/6, pi/2, -pi/3, pi/4];
-%q0 = [1.0472 ,  -0.2900  ,  1.1709   , 0.9821   , 4.9603 , 0.6159 ];
-%q0 = [1.0472  , -0.1067 ,   1.0060  ,  0.9514  ,  5.0615, 0.6853];
-q0 = [0.4748   ,-0.8883  ,  2.0036  , -0.5838   , 5.5112,    1.2558];
+
+ q0 = [0.4748   ,-0.8883  ,  2.0036  , -0.5838   , 5.5112,    1.2558];
+ % q0 = [pi/3, pi/4, -pi/6, pi/2, -pi/3, pi/4];
 T06_current = forward_kinematics(q0, d, a, alpha);
 
 ax = axes;
@@ -78,7 +79,7 @@ end
 
 Links = [d1, d2, d3, d4, d5, d6];
 
-u_links = [100, 200, 200, 100];
+u_links = [100, 200, 200, 250];
 
 % Create transform hierarchy
 robot.ha = hgtransform('Parent', ax);
@@ -176,9 +177,9 @@ n = 50;
     zoom on;
     rotate3d on
     axis equal;
-    range = 700;
+    range = 900;
     view(46,29);
-    axis([-range range -200 1000 -range range]);
+    axis([-range range -200 1000 0 range]);
 
     xlabel('X');
     ylabel('Y');
@@ -186,8 +187,10 @@ n = 50;
     title('TM5-700 Inverse kinematics');   
     
     frame_handles = [];
-    color = rand(1,3);
-    color_u = rand(1,3);
+    color = [0.0838 ,   0.2290  ,  0.9133];
+    color_u = [0.9 ,0 ,0];
+    trajectory = [];
+    collision_start_idx = NaN;
     
 for i=1:n
     disp(i);
@@ -199,37 +202,50 @@ for i=1:n
         disp('Target reached');
         break;
     end
-        
-       
+
+        trajectory = [trajectory, T06_current(1:3,4)];
+
         % Position interpolation (translation part)
         p_start = T06_current(1:3, 4);  % Current position
         p_end = T06_target(1:3, 4);     % Target position
         p_current = p_start + (p_end - p_start) * (i/n);
-        
+
         % Orientation interpolation (rotation part)
         % You might want to use quaternion interpolation (SLERP) for better results
         R_start = T06_current(1:3, 1:3);  % Current rotation matrix
         R_end = T06_target(1:3, 1:3);      % Target rotation matrix
-        
+
         % Simple linear interpolation of rotation matrices
         R_current = R_start + (R_end - R_start) * (i/n);
-       
-        
+
+
         % Construct interpolated transformation matrix
         T06_current = eye(4);
         T06_current(1:3, 1:3) = R_current;
         T06_current(1:3, 4) = p_current;
-    
+
         q = inverse_kinematics(T06_current, 1, 1, 1);
-    
+
         % check delle distaze di ogni link 
-        [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance(q,d,a,alpha,u_q,u_d,u_a,u_alpha);
-        
+        [D,C1,C2,V1,V2,V3,V4,V5,V6] = compute_distance_human_arm(q,d,a,alpha,u_q,u_d,u_a,u_alpha);
+
         pt = T06_target(1:3,4);
         Te = T06_current(1:3,4);
         disp('The distances are:');
         disp(D);
-        if any(D<100, 'all')
+        
+        if any(D<100, 'all') %put >10000 not to have collision avoidace strategy
+            if isnan(collision_start_idx) % we plot a vertical line in the moment the collision avoidance is triggered for the first time
+                collision_start_idx = 1;% Save the index
+            end
+            if  collision_start_idx==1
+                disp('PLOTTING THE LINEE');
+                x = T06_current(1,4);
+                y = T06_current(2,4);
+                z = T06_current(3,4);
+               plot3([x,x], [y,y], [z, 1000], '--r', 'LineWidth', 2);
+               collision_start_idx=2;
+            end
             QP = collision_avoidance(C1,C2,V1,V2,V3,V4,V5,V6,pt,Te,q,d,a,alpha);  % da sviluppare
             q = q + 1 * QP;             % q_n = q_o + q_dot * dt
             T06_current = forward_kinematics(q,d,a,alpha);
@@ -237,17 +253,17 @@ for i=1:n
             % q = inverse_kinematics(T06_current, 1, 1, 1);
             T06_current = forward_kinematics(q,d,a,alpha);
         end
-    
+
         if ~isempty(frame_handles)
             delete(frame_handles);
             frame_handles = [];
         end
-    
+
         disp('The new angles are:');
         disp(q);
-       
+
         disp('Updating SSV');
-    
+
          % Matrici di trasformazione:
         A01 = denavit(q(1), d(1), a(1), alpha(1));
         A12 = denavit(q(2), d(2), a(2), alpha(2));
@@ -255,33 +271,33 @@ for i=1:n
         A34 = denavit(q(4), d(4), a(4), alpha(4));
         A45 = denavit(q(5), d(5), a(5), alpha(5));
         A56 = denavit(q(6), d(6), a(6), alpha(6));
-        
-        
+
+
         % Matrici di trasformazione dal sistema zero a ogni joint:  
         A02 = A01 * A12;
         A03 = A02 * A23;
         A04 = A03 * A34;
         A05 = A04 * A45;
         A06 = A05 * A56;
-    
+
         set(robot.hLink(1), 'Matrix', A01);
         set(robot.hLink(2), 'Matrix', A12);
-        
+
         set(robot.hLink(3), 'Matrix', A23);
-        
+
         set(robot.hLink(4), 'Matrix', A34);
-       
+
         set(robot.hLink(5), 'Matrix', A45);
-        
+
         set(robot.hLink(6), 'Matrix', A56);
-        
+
         % Creazione dei punti 
         % Draw SSV for each link
         h = gobjects(1, robot.n);
         u_h = gobjects(1, human_arm.n);
         for j = 1:robot.n
-    
-        
+
+
             if j == 2
                 robot.SSV(j).R = [25,25]; 
                 robot.SSV(j).L = [-d2,-a3];        % Length
@@ -292,7 +308,7 @@ for i=1:n
                                0, 1, 0, 0;
                                1, 0, 0, 0;
                                0, 0, 0, 1];
-        
+
                 robot.SSV(j).shift(:, :, 2) =  eye(4); 
             elseif j == 3
                 robot.SSV(j).R = [25,25]; 
@@ -304,27 +320,27 @@ for i=1:n
                                0, 1, 0, 0;
                                1, 0, 0, 0;
                                0, 0, 0, 1];
-                
+
                 robot.SSV(j).shift(:, :, 2) =  eye(4);   
             else
-        
+
                 robot.SSV(j).R = 25; 
                 robot.SSV(j).L = -Links(j);        % Length
                 robot.SSV(j).rot = eye(4);   % Rotation matrix
                 robot.SSV(j).shift = eye(4); % Shift matrix
             end
-        
+
             if j <= length(robot.SSV)
-    
+
                 drawSSV(robot, j, 'points', 40, ...
                     'FaceColor', color, ...  % Random color for each link
                     'FaceAlpha', 0.7, ...       
                     'EdgeColor', color);
                 hold on
-    
+
             end
-    
-            
+
+
          for k=1:human_arm.n
 
                 if k~=1
@@ -357,20 +373,21 @@ for i=1:n
                     hold on
 
          end
-       
-    
+
+
         end
-    
-        
-    
+
+
+
         % Display all the joints frames of robot and human arm:
-     
+
         %target
         hold on
         plot3(T06_target(1,4),T06_target(2,4),T06_target(3,4),'b*')
-    
+        % plot3(T06_current(1,4),T06_current(2,4),T06_current(3,4), 'b*')
+
         L =50;
-    
+
         frame_handles = [frame_handles; disframe(eye(4), L, 'o')]; 
         frame_handles = [frame_handles; disframe(A01, L, 'none')];    
         frame_handles = [frame_handles; disframe(A02, L, 'none')];   
@@ -384,7 +401,17 @@ for i=1:n
         frame_handles = [frame_handles; disframe(A02_u, L, 'none')];   
         frame_handles = [frame_handles; disframe(A03_u, L, 'none')];
         frame_handles = [frame_handles; disframe(A04_u, L, 'none')];
-        
+
+        %to plot the trajectory of the robot showing how it avoids the
+        % human arm
+         if exist('traj_plot', 'var')
+            delete(traj_plot);
+        end
+        traj_plot = plot3(trajectory(1,:), trajectory(2,:), trajectory(3,:), 'r-', 'LineWidth', 2);
+    
+
         drawnow;
-        pause(0.2);
+        
+        pause(0.5);
 end
+saveas(gcf,'Barchart.png');

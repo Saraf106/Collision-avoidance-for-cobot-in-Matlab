@@ -398,3 +398,96 @@ while true
         drawnow;
         pause(2);
   end
+
+
+
+  %%
+  %Use this points in the compute_distance function:
+  % % Human arm
+% numPoints = size(pointcloud_arm, 1);
+% 
+% value_right = max(pointcloud_arm(:,2)); % point that is the most to the right
+% for i=1:numPoints
+%     if pointcloud_arm(i,2) == value_right
+%         index=i;
+%         disp(index);
+%         break;
+%     end
+% 
+% end
+% 
+% human_right(1) = pointcloud_arm(index,1);
+% human_right(2) = pointcloud_arm(index,2);
+% human_right(3) = pointcloud_arm(index,3);
+% 
+% value_left = min(pointcloud_arm(:, 2));   % point that is the most to the left
+% 
+% 
+% for i=1:numPoints
+%     if pointcloud_arm(i,2) == value_left
+%         index=i;
+%         disp(index);
+%         break;
+%     end
+% 
+% end
+% 
+% human_left(1) = pointcloud_arm(index,1);
+% human_left(2) = pointcloud_arm(index,2);
+% human_left(3) = pointcloud_arm(index,3);
+% 
+% difference = (human_right(2) - abs(human_left(2)));
+% 
+% 
+% % Define thresholds for middle-left and middle-right
+% threshold_left = (value_left + difference) / 2;  % Closer to left
+% threshold_right = (difference + value_right) / 2; % Closer to right
+% 
+% 
+% % we find another point that is in the middle between the two
+% for i=1:numPoints
+% 
+%      if pointcloud_arm(i,2)> value_left  & pointcloud_arm(i,2)< threshold_left 
+%             human_middle_sx= pointcloud_arm(i, :);
+%             disp('human_middle sinistro');
+%             disp(human_middle_sx);
+%             break;
+%      else
+%          continue;
+%      end 
+% 
+% end
+% 
+% for i=1:numPoints
+% 
+%      if pointcloud_arm(i,2)> threshold_right & pointcloud_arm(i,2)< value_right %& pointcloud_arm ~= human_middle_sx(2)
+%             human_middle_dx = pointcloud_arm(i, :);
+%             disp('human_middle destro');
+%             disp(human_middle_dx);
+%             break;
+%      else
+%          continue;
+%      end
+% 
+% end
+% 
+% disp('value left');
+% disp(value_left);
+% disp(human_left);
+% disp(human_right);
+% 
+% disp('threshold sx');
+% disp(threshold_left);
+% 
+% disp('threshold dx');
+% disp(threshold_right);
+
+
+% P1_u = human_left;
+% Q1_u = human_middle_sx;
+% 
+% P2_u = human_middle_sx;  %elbow
+% Q2_u = human_middle_dx;
+% 
+% P3_u = human_middle_dx;  %wrist
+% Q3_u = human_right;
