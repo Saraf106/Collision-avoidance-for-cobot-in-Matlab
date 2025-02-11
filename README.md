@@ -44,27 +44,27 @@ These functions are used within different simulation scripts, described below:
 
 - **`simulation_line_robot.m`**  
   *Simulates the inverse kinematics of the robot with simplified line segments representing the links.*  
-    ![Robot Line Simulation](images/robot_line2.png)
+    ![Robot Line Simulation](Images/robot_line2.png)
 
 - **`simulation_SSV_robot.m`**  
   *Simulates the inverse kinematics with links modeled as **Superquadrics Swept Volumes (SSVs)** for more accurate representation.*  
-    ![Robot SSV Simulation](images/robot_ssv2.png)
+    ![Robot SSV Simulation](Images/robot_ssv2.png)
 
 - **`simulation_with_human.m`**  
   *Simulates the robot with SSVs while integrating the human arm model (both line-based and SSV-based).*  
-    ![Robot Human Simulation](images/human_arm.png)
+    ![Robot Human Simulation](Images/human_arm.png)
 
 - **`simulation_robot_human.m`**  
   *Simulates the **collision avoidance strategy** with the robot and human arm, both modeled using SSVs.*  
-    ![Simulation with and without Collision strategy](images/coll_merge.png)
+    ![Simulation with and without Collision strategy](Images/coll_merge.png)
 
 - **`simulation_realtime.m`**  
   *Implements real-time collision avoidance by integrating the **Orbbec Femto Bolt** camera. Unlike previous simulations, the human arm is modeled using four key points detected by the camera.*  
-    ![Collision strategy Simulation](images/body_track.jpg)
+    ![Collision strategy Simulation](Images/body_track.jpg)
 
 - **`TRIAL_WITH_TECHMAN_COLLAVOIDANCE.m`**  
   *Used for real-world lab testing of the developed collision avoidance strategy.*  
-    ![Matlab Simulation during test](images/myes_trajs.jpg)
+    ![Matlab Simulation during test](Images/myes_trajs.jpg)
 
 
 
